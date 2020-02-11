@@ -1,0 +1,156 @@
+﻿@{
+    Layout = "~/_Layout.cshtml";
+    Page.Title = string.Format("Exercise03");
+
+    var title = "";
+    var artistid = "0";
+    var year = "";
+    var label = "";
+
+    var db = Database.Open("CHINOOK");
+
+    var artistquery = "SELECT ArtistId, Name "
+            + "FROM Artists "
+            + "ORDER BY Name";
+
+    var artistlist = db.Query(artistquery);
+
+    //these are validator controls execute on the server side
+
+    Validation.Add("Title",
+         Validator.Required("Title is required"),
+          Validator.StringLength(160, 0, "Title is limited to 160 characters"));
+
+    Validation.Add("Artist",
+         Validator.Range(1, 276, "Artist is required"));
+
+    Validation.Add("Year",
+         Validator.Integer("Units in year must be a number"),
+         Validator.Range(1950, System.DateTime.Now.Year, "Year is out of range, 1950 to today"));
+
+    Validation.Add("Label",
+         Validator.Required("Label is required"),
+          Validator.StringLength(50, 1, "Title is limited to 50 characters"));
+
+
+    //compare two fields together (ie password)
+    //Validation.Add("ConfirmPassword",
+    //    Validator.Required("Missing confirm password"),
+    //      Validator.StringLength(160, 1, "Confirm password is too long"),
+    //      Validator.EqualsTo("Password", "Password not confirmed"));
+
+    //pattern testing (ie PostalCode)
+    //Validation.Add("PostalCode",
+    //     Validator.Regex(@"^[A-Za-z][0-9][A-Za-z][0-9][A-Za-z][0-9]$",
+    //     "Postal Code format invalid (T7T7T7"));
+}
+@section head{
+    @*<link href="~/Content/MyCssCopy.css" rel="stylesheet" />*@
+}
+
+@section banner{
+    <h1>@Page.Title</h1>
+}
+
+<h2>Enter Album</h2>
+
+@if (IsPost)
+{
+    title = Request.Form["Title"];
+    artistid = Request.Form["ArtistList"];
+    year = Request.Form["Year"];
+    label = Request.Form["Label"];
+    var thebutton = Request.Form["FormButton"];
+
+    if (thebutton.Equals("Clear")) //pressed the CLEAR button
+    {
+        title = "";
+        artistid = "0";
+        year = "";
+        label = "";
+    }
+    else //pressed the ADD button
+    {
+        
+        if (Validation.IsValid())
+        {
+            try
+            {
+                var inscommand = "INSERT INTO Albums "
+                    + "(Title, ArtistId, ReleaseYear, ReleaseLabel, "
+                    + "VALUES(@0, @1, @2, @3)";
+                db.Execute(inscommand, title,
+                    artistid.Equals("0") ? null : artistid,
+                    string.IsNullOrEmpty(year) ? null : year,
+                    label);
+                <div class="col-12 text-center">
+                    <p style="color:green">
+                        Album has been ADDED
+                    </p>
+                </div>
+            }
+            catch (Exception ex)
+            {
+                <div class="col-12 text-center">
+                    <p style="color:firebrick; font-size:large">
+                        Processing error: @ex.Message
+                    </p>
+                </div>
+            }
+        }
+    }
+}
+else
+{
+
+}
+@Html.ValidationSummary()
+<form id="theForm" action="" method="post">
+    <div class="row row-cols-2">
+        <div class="col text-right">
+            <label id="lblTitle" for="Title">Title: </label>
+        </div>
+        <div class="col text-left">
+            <input type="text" name="Title" value="@title" />
+        </div><br />
+        <div class="col text-right">
+            <label id="lblArtistList" for="ArtistList">Artist: </label>
+        </div>
+        <div class="col text-left">
+            <select name="ArtistList">
+                <option value="0">select...</option>
+                @foreach (var acollectionrow in artistlist)
+                {
+                    if (acollectionrow.ArtistID.ToString() == artistid)
+                    {
+                        <option value="@acollectionrow[0]" selected>@acollectionrow[1]</option>
+                    }
+                    else
+                    {
+                        <option value="@acollectionrow[0]">@acollectionrow[1]</option>
+                    }
+                }
+            </select>
+        </div><br />
+        <div class="col text-right">
+            <label id="lblYear" for="Year">Year: </label>
+        </div>
+        <div class="col text-left">
+            <input type="number" name="Year" value="@year" step="1" />
+        </div><br />
+        <div class="col text-right">
+            <label id="lblLabel" for="Label">Label: </label>
+        </div>
+        <div class="col text-left">
+            <input type="text" name="Label" value="@label" />
+        </div><br />
+    </div>
+    <div class="row">
+        <div class="col-12 text-center">
+            <input type="submit" id="FormButton" name="FormButton"
+                   class="btn btn-primary" value="Add" />
+            <input type="submit" id="FormButton" name="FormButton" formnovalidate
+                   class="btn" value="Clear" />
+        </div>
+    </div>
+</form>
