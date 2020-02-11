@@ -2,44 +2,32 @@
     Layout = "~/_Layout.cshtml";
     Page.Title = string.Format("Exercise02-C");
 
-    //reteive the passed data value
-    //to retreive the passed data use .QueryString["label"]
-    //data is returned as a string
     var cid = Request.QueryString["cid"];
     <p>Your choice was: @cid</p>
-    //good practice
-    //check that you actually retreived data
+
     if (string.IsNullOrEmpty(cid))
     {
-        Response.Redirect("MultiRecordQuery.cshtml");
+        Response.Redirect("Exercise02_B.cshtml");
     }
 
-    //use data to lookup products
-    var db = Database.Open("NWDB");
-    var prodquery = @"SELECT ProductID, ProductName, UnitPrice, UnitsInStock, Discontinued
-        FROM Products
-        WHERE CategoryID = @0
-        ORDER BY ProductName";
-    var prodinfo = db.Query(prodquery, cid);
+    var db = Database.Open("CHINOOK");
+    var albumquery = @"SELECT AlbumId, Title, ReleaseYear, ReleaseLabel 
+                    FROM Albums
+                    WHERE ArtistId = @0
+                    ORDER BY Title
+                    ";
+    var albuminfo = db.Query(albumquery, cid);
 
-    //use data to get category name for display heading
-    //yes: you could have passed the category name with the category id
-    //demonstration of using .QueryValue()
-    var catquery = @"SELECT CategoryName
-    FROM Categories
-    WHERE CategoryID = @0";
-    var catname = db.QueryValue(catquery, cid);
+    var artistquery = @"SELECT Name 
+                    FROM Artists
+                    WHERE ArtistId = @0";
+    var artistname = db.QueryValue(artistquery, cid);
 
-    //setup display to use the class WebGrids
-    //assign the display data to the instance when it is created
-    //to alter the number of rows display by the WebGrid instance,
-    //   you need to specify the value when you first create the instance
-    //   syntax attribute --> rowsPerPage:value
-    var gridinstance = new WebGrid(prodinfo, rowsPerPage: 5);
+    var gridinstance = new WebGrid(albuminfo, rowsPerPage: 10);
 }
-@section banner {<h1>WebGrid Display</h1>}
+@section banner {<h1>Artist's Albums</h1>}
 <div class="offset-1">
-    <h3>Products for Category: @catname</h3>
+    <h3>Albums of @artistname</h3>
     <div class="col-11">
         @gridinstance.GetHtml(
             tableStyle: "table table-striped table-bordered table-hover",
@@ -47,10 +35,9 @@
             firstText: "Start",
             lastText: "Ends",
             columns: gridinstance.Columns(
-               gridinstance.Column(columnName: "ProductID", header: "ID"),
-               gridinstance.Column(columnName: "ProductName", header: "Name"),
-               gridinstance.Column(columnName: "UnitPrice", header: "$", canSort: false,
-                    format: (item) => item.UnitPrice.ToString("0.00")),
-               gridinstance.Column(columnName: "UnitsInStock", header: "QiS", canSort: false)))
+               gridinstance.Column(columnName: "AlbumID", header: "ID"),
+               gridinstance.Column(columnName: "Title", header: "Title"),
+               gridinstance.Column(columnName: "ReleaseYear", header: "Released", canSort: false),
+               gridinstance.Column(columnName: "ReleaseLabel", header: "Label", canSort: false)))
     </div>
 </div>

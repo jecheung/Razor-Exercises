@@ -10,7 +10,7 @@
     //to retreive the passed data use .QueryString["label"]
     //data is returned as a string
     var cid = Request.QueryString["cid"];
-
+    var choice = Request.Form["ArtistList"];
     //good practice
     //check that you actually retreived data
     if (string.IsNullOrEmpty(cid))
@@ -57,22 +57,66 @@
 @section banner {
     <h1>@Page.Title</h1>
 }
+@if (IsPost)
+{
 
-<table>
-    <thead>
-        <tr>
-            <th>ID</th>
-            <th>Artist Name</th>
-            <th></th>
-        </tr>
-    </thead>
-    <tbody>
-        @foreach (var row in results)
+
+    if (cid.Equals("0"))
+    {
+        <p style="color:firebrick">Select an artist to view:</p>
+    }
+    else
+    {
+        var namequery = @"SELECT name
+                            FROM Artists
+                            WHERE ArtistId = @0";
+        var nameinfo = db.Query(namequery, choice);
+
+        if (nameinfo.Count() == 0)
         {
-            <tr>
-                <td>@row.ArtistId</td>
-                <td>@row.Name</td>
-            </tr>
+            <p style="color:firebrick">There are no albums for the selected artist.</p>
         }
-    </tbody>
-</table>
+        else
+        {
+            Response.Redirect("Exercise02_C.cshtml?cid=" + choice);
+            
+        }
+    }
+}
+else
+{
+    if (results.Count() == 0)
+    {
+        <p style="color:firebrick">There are no artists on file.</p>
+    }
+}
+
+<form id="theform" method="post">
+    <div class="row offset-1">
+        <label class="label" for="ArtistList">Artist:  </label>&nbsp;&nbsp;
+        <select id="ArtistList" name="ArtistList">
+            <option value="0">select artist...</option>
+            @foreach (var item in results)
+            {
+                //for the select control, the default display on an event
+                //is the 1st option tag
+                //to retain the option selected between posts, you need to
+                //set the selected option using the attribute selected
+                if (cid == item.ArtistID.ToString())
+                {
+                    <option value="@item.ArtistID" selected>@item.Name</option>
+                }
+                else
+                {
+                    <option value="@item.ArtistID">@item.Name</option>
+                }
+            }
+        </select>
+    </div><br />
+    <div class="row offset-1">
+        <button type="submit" id="theButton" name="theButton" value="submit"
+                class="btn btn-primary">
+            View Artists ...
+        </button>
+    </div>
+</form>
