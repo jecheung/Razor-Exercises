@@ -1,0 +1,299 @@
+﻿@{
+    Layout = "~/_Layout.cshtml";
+    Page.Title = string.Format("Exercise04_C");
+
+    var pid = Request.QueryString["pid"];
+    if (pid.IsEmpty())
+    {
+        Response.Redirect("Exercise04_A.cshtml");
+    }
+    var artistid = Request.Form["ArtistID"];
+    var title = Request.Form["Title"];
+    var releaseyear = Request.Form["ReleaseYear"];
+    var releaselabel = Request.Form["ReleaseLabel"];
+    var thebutton = Request.Form["theButton"];
+
+    var message = "";
+
+    //these are validator controls execute on the server side
+
+    Validation.Add("Title",
+         Validator.Required("Title is required"),
+         Validator.StringLength(160, 1, "Title is limited to 160 characters"));
+
+    Validation.Add("ReleaseLabel",
+         Validator.StringLength(50, 1, "Label is limited to 50 characters"));
+
+    /*Validation.Add("ArtistID",
+         Validator.StringLength(40, 0, "Quantity per unit is limited to 40 characters"));*/
+
+    Validation.Add("ReleaseYear",
+        Validator.Integer("Units in year must be a number"),
+         Validator.Range(1950, System.DateTime.Now.Year, "Year is out of range, 1950 to today"));
+
+
+    var db = Database.Open("CHINNOK");
+    var supplierStatement = "SELECT SupplierID, CompanyName "
+                        + "FROM Suppliers "
+                        + "ORDER BY CompanyName";
+    var querySuppliers = db.Query(supplierStatement);
+    var categoryStatement = "SELECT CategoryID, CategoryName "
+                        + "FROM Categories "
+                        + "ORDER BY CategoryName";
+    var queryCategories = db.Query(categoryStatement);
+    var queryStatement = "SELECT ArtistID, Title, SupplierID, "
+                        + "CategoryID, QuantityPerUnit, UnitPrice "
+                        + "FROM Albums "
+                        + "WHERE ArtistID = @0";
+    var queryProducts = db.QuerySingle(queryStatement, pid);
+}
+
+@section head{
+    @*<link href="~/Content/MyCssCopy.css" rel="stylesheet" />*@
+}
+
+@section banner{
+    <h1>@Page.Title</h1>
+}
+@if (IsPost)
+{
+    if (thebutton.Equals("backtosearch"))
+    {
+        Response.Redirect("ProductSearch.cshtml");
+    }
+
+    if (Validation.IsValid())
+    {
+        try
+        {
+            if (thebutton.Equals("discontinue"))
+            {
+                var sqlcommand = "UPDATE Products SET "
+                                + "Discontinued = 1 "
+                                + "WHERE ArtistID = @0";
+                var rowsaffected = db.Execute(sqlcommand, artistid);
+                if (rowsaffected > 0)
+                {
+                    discontinued = "1";
+                    message = "Product has been DISCONTINUED";
+                }
+                else
+                {
+                    message = "Product NOT found";
+                }
+            }
+            else if (thebutton.Equals("update"))
+            {
+                var sqlcommand = "UPDATE Products SET "
+                                + "Title = @0, "
+                                + "SupplierID = @1, "
+                                + "CategoryID = @2, "
+                                + "QuantityPerUnit = @3, "
+                                + "UnitPrice = @4, "
+                                + "UnitsInStock = @5, "
+                                + "UnitsOnOrder = @6, "
+                                + "ReorderLevel = @7, "
+                                + "Discontinued = @8 "
+                                + "WHERE ArtistID = @9";
+                var rowsaffected = db.Execute(sqlcommand, title,
+                    releaseyear.Equals("0") ? null : releaseyear,
+                    releaselabel.Equals("0") ? null : releaselabel,
+                    string.IsNullOrEmpty(quantityperunit) ? null : quantityperunit,
+                    string.IsNullOrEmpty(unitprice) ? null : unitprice,
+                    string.IsNullOrEmpty(unitsinstock) ? null : unitsinstock,
+                    string.IsNullOrEmpty(unitsonorder) ? null : unitsonorder,
+                    string.IsNullOrEmpty(reorderlevel) ? null : reorderlevel,
+                    discontinued, artistid);
+                if (rowsaffected > 0)
+                {
+                    message = "Product has been UPDATED";
+                }
+                else
+                {
+                    message = "Product NOT found";
+                }
+            }
+            else if (thebutton.Equals("delete"))
+            {
+                var deleteStatement = "Delete Products WHERE ArtistID = @0";
+
+                var rows = db.Execute(deleteStatement, artistid);
+                if (rows == 1)
+                {
+                    message = "Product has been DELETED";
+                }
+                else
+                {
+                    message = "Product NOT found";
+                }
+                artistid = "";
+                title = "";
+                releaseyear = "0";
+                releaselabel = "0";
+                quantityperunit = "";
+                unitprice = "";
+                unitsinstock = "";
+                unitsonorder = "";
+                reorderlevel = "";
+                discontinued = "0";
+            }
+        }
+        catch (Exception ex)
+        {
+            <div class="col-12 text-center">
+                <p style="color:firebrick; font-size:large">
+                    Processing error: @ex.Message
+                </p>
+            </div>
+        }
+    }
+}
+else //IsPost=false
+{
+    artistid = queryProducts.ArtistID.ToString();
+    title = queryProducts.Title;
+    releaseyear = queryProducts.SupplierID == null ? "0" : queryProducts.SupplierID.ToString();
+    releaselabel = queryProducts.CategoryID == null ? "0" : queryProducts.CategoryID.ToString();
+    quantityperunit = queryProducts.QuantityPerUnit;
+    unitprice = queryProducts.UnitPrice == null ? "" : queryProducts.UnitPrice.ToString();
+    unitsinstock = queryProducts.UnitsInStock == null ? "" : queryProducts.UnitsInStock.ToString();
+    unitsonorder = queryProducts.UnitsOnOrder == null ? "" : queryProducts.UnitsOnOrder.ToString();
+    reorderlevel = queryProducts.ReorderLevel == null ? "" : queryProducts.ReorderLevel.ToString();
+    discontinued = queryProducts.Discontinued.ToString();
+}
+@Html.ValidationSummary()
+
+<div class="col-12 text-center">
+    <p style="color:green">
+        @message
+    </p>
+</div>
+<form id="theForm" action="" method="post">
+    <div class="row row-cols-2">
+        <div class="col text-right">
+            <label id="lblArtistID" for="ArtistID">Product ID</label>
+        </div>
+        <div class="col text-left">
+            <input type="text" name="ArtistID" value="@artistid" readonly />
+        </div><br />
+        <div class="col text-right">
+            <label id="lblTitle" for="Title">Product Name</label>
+        </div>
+        <div class="col text-left">
+            <input type="text" name="Title" value="@title" />
+        </div><br />
+        <div class="col text-right">
+            <label id="lblReleaseYear" for="ReleaseYear">Supplier</label>
+        </div>
+        <div class="col text-left">
+            <select name="ReleaseYear">
+                <option value="0">select...</option>
+                @foreach (var acollectionrow in querySuppliers)
+                {
+                    if (acollectionrow.SupplierID.ToString() == releaseyear)
+                    {
+                        <option value="@acollectionrow[0]" selected>@acollectionrow[1]</option>
+                    }
+                    else
+                    {
+                        <option value="@acollectionrow[0]">@acollectionrow[1]</option>
+                    }
+                }
+            </select>
+        </div><br />
+        <div class="col text-right">
+            <label id="lblReleaseLabel" for="CatgoryList">Category</label>
+        </div>
+        <div class="col text-left">
+            <select name="ReleaseLabel">
+                <option value="0">select...</option>
+                @foreach (var acollectionrow in queryCategories)
+                {
+                    if (acollectionrow.CategoryID.ToString() == releaselabel)
+                    {
+                        <option value="@acollectionrow[0]" selected>@acollectionrow[1]</option>
+                    }
+                    else
+                    {
+                        <option value="@acollectionrow[0]">@acollectionrow[1]</option>
+                    }
+                }
+            </select>
+        </div><br />
+        <div class="col text-right">
+            <label id="lblQuantityPerUnit" for="QuasntityPerUnit">Quantity Per Unit</label>
+        </div>
+        <div class="col text-left">
+            <input type="text" name="QuantityPerUnit" value="@quantityperunit" />
+        </div><br />
+        <div class="col text-right">
+            <label id="lblUnitPrice" for="UnitPrice">Unit Price</label>
+        </div>
+        <div class="col text-left">
+            <input type="number" name="UnitPrice" value="@unitprice" step="0.01" />
+        </div><br />
+        <div class="col text-right">
+            <label id="lblUnitsInStock" for="UnitsInStock">Units In Stock</label>
+        </div>
+        <div class="col text-left">
+            <input type="number" name="UnitsInStock" value="@unitsinstock" />
+        </div><br />
+        <div class="col text-right">
+            <label id="lblUnitsOnOrder" for="UnitsOnOrder">Units On Order</label>
+        </div>
+        <div class="col text-left">
+            <input type="number" name="UnitsOnOrder" value="@unitsonorder" /><br />
+        </div><br />
+        <div class="col text-right">
+            <label id="lblReorderLevel" for="ReorderLevel">ReorderLevel</label>
+        </div>
+        <div class="col text-left">
+            <input type="number" name="ReorderLevel" value="@reorderlevel" />
+        </div><br />
+        <div class="col text-right">
+            <label id="lblDiscontinued" for="Discontinued">Discontinued</label>
+        </div>
+        <div class="col text-left">
+            @if (discontinued.Equals("True") || (discontinued == "1"))
+            {
+                <input type="checkbox" name="Discontinued" checked value="1" />
+            }
+            else
+            {
+                <input type="checkbox" name="Discontinued" value="0" />
+            }
+        </div><br />
+    </div>
+    <div class="row">
+        <div class="col-12 text-center">
+            <button type="submit" name="theButton" id="theUpdate" class="btn btn-primary"
+                    value="update">
+                Update
+            </button>&nbsp;&nbsp;&nbsp;
+            <button type="submit" name="theButton" id="theDiscontinue" class="btn btn-primary" formnovalidate
+                    value="discontinue">
+                Discontinue
+            </button>&nbsp;&nbsp;&nbsp;
+            <button type="submit" name="theButton" id="theDelete" class="btn btn-primary" formnovalidate
+                    value="delete">
+                Delete Record
+            </button>&nbsp;&nbsp;&nbsp;
+            <button type="submit" name="theButton" id="theCancel" class="btn btn-primary" formnovalidate
+                    value="backtosearch">
+                Back to Search
+            </button>
+        </div>
+    </div>
+    @* confirmation can be done on a button click using javascript
+        we will ask the user to confirm the discontinuing of a product*@
+    <script type="text/javascript">
+        document.getElementById("theDiscontinue").onclick = ConfirmDiscontinue;
+        function ConfirmDiscontinue() {
+            return confirm("Are you sure you want to DISCONTINUE @title?");
+        }
+        document.getElementById("theDelete").onclick = ConfirmDelete;
+        function ConfirmDelete() {
+            return confirm("Are you sure you want to DELETE @title?");
+        }
+    </script>
+</form>
