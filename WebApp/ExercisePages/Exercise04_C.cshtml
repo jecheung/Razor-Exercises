@@ -38,11 +38,16 @@
                     + "FROM Artists "
                     + "ORDER BY Name";
     var artistlist = db.Query(artistquery);
-    var queryStatement = "SELECT ArtistID, Title, ReleaseYear, "
+    var queryStatement = "SELECT AlbumID, ArtistID, Title, ReleaseYear, "
                         + "ReleaseLabel "
                         + "FROM Albums "
                         + "WHERE AlbumID = @0";
     var queryAlbums = db.QuerySingle(queryStatement, pid);
+    if(queryAlbums == null)
+    {
+        message = "Album NOT found";
+        Response.Redirect("Exercise04_A.cshtml");
+    }
 }
 
 @section head{
@@ -72,9 +77,9 @@
                                 + "ReleaseLabel = @3 "
                                 + "WHERE AlbumID = @4";
                 var rowsaffected = db.Execute(sqlcommand, title,
-                    artistid.Equals("0") ? null : artistid,
-                    string.IsNullOrEmpty(releaseyear) ? null : releaseyear,
-                    string.IsNullOrEmpty(releaselabel) ? null : releaselabel, artistid);
+                    artistid,
+                    releaseyear,
+                    string.IsNullOrEmpty(releaselabel) ? null : releaselabel, albumid);
                 if (rowsaffected > 0)
                 {
                     message = "Album has been UPDATED";
@@ -86,9 +91,13 @@
             }
             else if (thebutton.Equals("delete"))
             {
-                var deleteStatement = "Delete Albums WHERE AlbumID = @0";
+                var deleteTracks = "Delete from Tracks WHERE AlbumID = @0";
+                var deleteTracksExecute = db.Execute(deleteTracks, albumid);
 
-                var rows = db.Execute(deleteStatement, artistid);
+                var deleteStatement = "Delete Albums WHERE AlbumID = @0";
+                
+                
+                var rows = db.Execute(deleteStatement, albumid);
                 if (rows == 1)
                 {
                     message = "Album has been DELETED";
@@ -116,6 +125,7 @@
 }
 else //IsPost=false
 {
+    albumid = queryAlbums.AlbumID.ToString();
     artistid = queryAlbums.ArtistID.ToString();
     title = queryAlbums.Title;
     releaseyear = queryAlbums.ReleaseYear == null ? "0" : queryAlbums.ReleaseYear.ToString();
@@ -130,12 +140,12 @@ else //IsPost=false
 </div>
 <form id="theForm" action="" method="post">
     <div class="row row-cols-2">
-        @*<div class="col text-right">
+        <div class="col text-right">
             <label id="lblAlbumID" for="AlbumID">Album ID</label>
         </div>
         <div class="col text-left">
             <input type="text" name="AlbumID" value="@albumid" readonly />
-        </div><br />*@
+        </div><br />
         <div class="col text-right">
             <label id="lblTitle" for="Title">Title</label>
         </div>
